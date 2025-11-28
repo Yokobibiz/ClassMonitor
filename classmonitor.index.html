@@ -1,0 +1,1695 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema Escolar - ClassMonitor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Poppins", sans-serif;
+      background: linear-gradient(120deg,#f4f6f8 60%,#dbeafe 100%);
+      color: #1e293b;
+      min-height: 100vh;
+    }
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      width: 260px;
+      background: linear-gradient(120deg,#1e293b 70%,#1e40af 100%);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      padding: 32px 18px 18px 18px;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.13);
+      z-index: 10;
+      height: 100vh;
+      align-items: center;
+      transition: width .3s;
+      border-right: 1.5px solid #2563eb66;
+      backdrop-filter: blur(2px);
+    }
+    .sidebar h2 {
+      text-align: center;
+      margin-bottom: 36px;
+      font-weight: 700;
+      font-size: 27px;
+      color: #3b82f6;
+      letter-spacing: 1.5px;
+      user-select:none;
+      filter: drop-shadow(0 2px 6px #1e293b33);
+    }
+    .menu-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      text-align: center;
+      font-size: 17px;
+      padding: 13px 22px;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-bottom: 16px;
+      font-weight: 600;
+      transition: .23s, transform .10s;
+      width: 100%;
+      letter-spacing:.9px;
+    }
+    .menu-btn:hover,
+    .menu-btn.active {
+      background: linear-gradient(90deg,#334155 35%,#566080 95%);
+      color: #6ee7b7;
+      box-shadow: 0 3px 10px rgba(0,0,0,.13);
+      letter-spacing: 1.2px;
+      transform: scale(1.026);
+    }
+    .content {
+      margin-left: 270px;
+      padding: 48px 32px 30px 32px;
+      min-height: 100vh;
+      background: #fafbfc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      animation: fadein .8s;
+    }
+    @keyframes fadein { from {opacity:0} to {opacity:1} }
+    @media (max-width: 900px) {
+      .sidebar { position: relative; width: 100%; height: auto; }
+      .content { margin-left: 0; padding: 22px 7vw 22px 7vw; }
+    }
+    @media (max-width: 600px) {
+      .sidebar { padding: 16px 4px;}
+      .content { padding: 18px 2vw;}
+    }
+    h3 {
+      margin-top: 0;
+      margin-bottom: 18px;
+      font-size: 27px;
+      color: #2563eb;
+      text-align: center;
+      letter-spacing: 1px;
+      font-weight: 700;
+      background: linear-gradient(80deg, #2563eb11 65%, #3b82f666 100%);
+      border-radius: 13px;
+      padding: 10px 5px;
+      box-shadow: 0 1px 10px #2563eb16;
+    }
+    label {
+      font-weight: 600;
+      display: block;
+      margin: 14px 0 2px 0;
+      font-size: 15px;
+      color:#374151;
+    }
+    input, textarea, select {
+      display: block; margin-top: 8px; margin-bottom: 13px; padding: 12px 13px;
+      width: 100%; border: 1.4px solid #dbeafe; border-radius: 7px; font-size: 15px;
+      font-family: "Poppins", sans-serif; background: #fff;
+      transition: border .19s, box-shadow .15s;
+      box-shadow: 0 1px 8px rgba(55,86,181,0.04);
+    }
+    input:focus, textarea:focus, select:focus { border-color: #2563eb; outline: none; box-shadow: 0 2px 12px #2563eb22;}
+    textarea { min-height: 55px; }
+    button {
+      padding: 13px 24px;
+      border: none;
+      background: linear-gradient(90deg,#2563eb 70%,#3b82f6 100%);
+      color: white;
+      border-radius: 7px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: background .3s, filter .16s;
+      font-size: 16px;
+      margin-top: 2px;
+      margin-bottom: 14px;
+      box-shadow: 0 2px 12px rgba(37,99,235,.09);
+      filter: drop-shadow(0 3px 5px #2563eb11);
+    }
+    button:hover {
+      background: linear-gradient(90deg,#182e51 80%,#2563eb 100%);
+      color: #6ee7b7;
+      filter: brightness(1.06) drop-shadow(0 8px 14px #2563eb22);
+      transform: scale(1.02);
+    }
+    .msg { margin-top: 9px; font-weight: bold; font-size:16px; text-align:center;}
+    .erro { color: #dc2626;}
+    .sucesso { color: #16a34a;}
+    
+    /* TABELAS CENTRALIZADAS */
+    .table-container {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+      margin: 20px 0;
+    }
+    .table-wrap {
+      background:#fff;
+      border-radius:14px;
+      box-shadow:0 2.5px 14px rgba(0,0,0,.11);
+      padding:30px;
+      margin: 0 auto;
+      width:95%;
+      max-width:1000px;
+      transition: box-shadow .18s;
+      text-align: center;
+    }
+    .table-wrap:hover {
+      box-shadow: 0 7px 24px #3b82f629;
+    }
+    table  { 
+      width:100%; 
+      border-collapse:collapse;
+      margin: 0 auto;
+    }
+    th, td { 
+      padding:14px 12px; 
+      text-align:center; 
+      border-bottom:1px solid #e5e7eb;
+    }
+    th { 
+      background: #f8fafc; 
+      color: #2563eb;
+      font-weight: 700;
+      font-size: 15px;
+    }
+    td {
+      font-size: 14px;
+    }
+    .actions-cell {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+    .action-btn {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .edit-btn {
+      background: #dbeafe;
+      color: #2563eb;
+    }
+    .edit-btn:hover {
+      background: #2563eb;
+      color: white;
+    }
+    .delete-btn {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+    .delete-btn:hover {
+      background: #dc2626;
+      color: white;
+    }
+    @media (max-width:600px){
+      table,th,td{font-size:11px;}
+      .sidebar {padding:8px 2px;}
+      .actions-cell {
+        flex-direction: column;
+        gap: 4px;
+      }
+    }
+    .table-turma-block { 
+      margin-bottom: 40px; 
+      text-align: center;
+    }
+    .table-turma-block h4 {
+      margin-bottom:12px;
+      color: #0ea5e9;
+      font-size: 22px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+    
+    /* CRUD STYLES */
+    .crud-container {
+      width: 100%;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    .crud-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .search-box {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .search-box input {
+      flex: 1;
+      margin: 0;
+    }
+    .crud-actions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    
+    /* DASHBOARD CENTRALIZADO */
+    .dashboard-container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .dashboard-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      width: 100%;
+      margin-bottom: 30px;
+    }
+    .dashboard-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      text-align: center;
+      transition: transform 0.3s, box-shadow 0.3s;
+      border-left: 4px solid #2563eb;
+    }
+    .dashboard-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.15);
+    }
+    .dashboard-card h4 {
+      margin: 0 0 12px 0;
+      color: #374151;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .dashboard-card .number {
+      font-size: 28px;
+      font-weight: 700;
+      color: #2563eb;
+      margin: 8px 0;
+    }
+    .dashboard-card .subtitle {
+      font-size: 13px;
+      color: #6b7280;
+      margin-top: 5px;
+    }
+    .dashboard-charts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 25px;
+      width: 100%;
+      justify-items: center;
+    }
+    .chart-container {
+      background: white;
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+    }
+    .chart-container h4 {
+      margin: 0 0 20px 0;
+      color: #374151;
+      font-size: 16px;
+      font-weight: 600;
+      text-align: center;
+    }
+    @media (max-width: 768px) {
+      .dashboard-charts {
+        grid-template-columns: 1fr;
+      }
+      .dashboard-cards {
+        grid-template-columns: 1fr;
+      }
+      .chart-container {
+        max-width: 100%;
+      }
+    }
+
+    /* Floating de fundo sutil decorativo para o conteúdo */
+    .decorative-float {
+      position: absolute;
+      right: -100px; top: -80px;
+      width: 220px; height: 220px;
+      background: radial-gradient(circle at 65% 25%, #60a5fa44 63%, #ddf4ff00 100%);
+      z-index: 0; pointer-events: none;
+      filter: blur(7px);
+      animation: floatbg 10s infinite alternate ease-in-out;
+    }
+    @keyframes floatbg {
+      from { transform: scale(1) rotate(-8deg);}
+      to   { transform: scale(1.06) rotate(7deg);}
+    }
+    
+    /* ---- FOTO PRÉVIA ---- */
+    .preview-wrap{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+    .preview-img{width:70px;height:70px;object-fit:cover;border-radius:10px;display:none;}
+    .preview-info{font-size:13px;color:#555;}
+    
+    /* Estilização do autocomplete de pesquisa de aluno */
+    .resultado-lista {
+      background: #fff;
+      border-radius: 8px;
+      border: 1px solid #dbeafe;
+      margin-bottom: 9px;
+      max-height: 180px;
+      overflow-y: auto;
+      box-shadow: 0 8px 15px #3b82f629;
+    }
+    .resultado-lista .item-aluno {
+      padding: 9px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #e5e7eb;
+      transition: background .13s;
+    }
+    .resultado-lista .item-aluno:last-child { border-bottom: none;}
+    .resultado-lista .item-aluno:hover,
+    .resultado-lista .item-aluno.active {
+      background: #60a5fa15;
+      color: #1e40af;
+      font-weight: 600;
+    }
+    .selecionado {
+      background: #c7f9cc59;
+      border-left: 5px solid #10b981;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      min-height:20px;
+      font-size: 14.5px;
+      color: #05518c;
+      box-shadow:0 2px 7px #10b98122;
+      display: none;
+      font-weight:600;
+    }
+    
+    /* Modal backdrop - para edições/exclusão */
+    .modal-backdrop {
+      position:fixed;top:0;left:0;right:0;bottom:0;z-index:90;
+      background:rgba(23,42,78,0.27);
+      backdrop-filter: blur(1.8px);
+      width:100vw;height:100vh;
+    }
+    .modal {
+      background:#fff;
+      border-radius:12px;
+      padding:32px 21px 18px 21px;
+      box-shadow:0 8px 44px #1e293b55;
+      position:fixed; left:50%; top:50%; z-index:91; min-width:350px;
+      max-width:90vw; transform:translate(-50%,-50%);
+      font-size:15px;
+      animation: fadein .33s;
+    }
+    .botao-modal {
+      padding: 10px 20px;
+      margin: 15px 10px 5px 0;
+      background: #2563eb;
+      color: #fff;
+      border-radius: 6px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: background .13s;
+    }
+    .botao-modal:hover {
+      background: #10b981;
+      color: #fff;
+    }
+    .botao-cancelar {
+      background: #6b7280;
+    }
+    .botao-cancelar:hover {
+      background: #374151;
+    }
+    .loader {
+      border: 6px solid #ddeafe;
+      border-radius: 50%;
+      border-top: 6px solid #2563eb;
+      width: 50px; height: 50px;
+      animation: spin 0.7s linear infinite;
+      position: fixed;
+      left: 50%; top: 20%;
+      transform: translate(-50%, -50%);
+      z-index: 130;
+      display: flex; align-items: center; justify-content: center;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg);}
+      100%{ transform: rotate(360deg);}
+    }
+
+    /* NOVOS ESTILOS PARA AUTENTICAÇÃO */
+    .auth-container {
+      width: 100%;
+      max-width: 400px;
+      margin: 50px auto;
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
+    .auth-tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      color: #6b7280;
+      transition: color 0.3s;
+    }
+    .auth-tab.active {
+      color: #2563eb;
+      border-bottom: 2px solid #2563eb;
+      margin-bottom: -2px;
+    }
+    .user-info {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: white;
+      padding: 10px 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .user-name {
+      font-weight: 600;
+      color: #2563eb;
+    }
+    .logout-btn {
+      background: #ef4444;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .logout-btn:hover {
+      background: #dc2626;
+    }
+  </style>
+</head>
+<body>
+  <!-- Área de informações do usuário -->
+  <div id="userInfo" class="user-info" style="display: none;">
+    <span class="user-name" id="userName"></span>
+    <button class="logout-btn" onclick="logout()">Sair</button>
+  </div>
+
+  <div class="sidebar">
+    <h2>📘 Menu principal</h2>
+    <button class="menu-btn active" id="btnAlunos">Cadastro de Alunos</button>
+    <button class="menu-btn" id="btnOcorrencias">Registro de Ocorrências</button>
+    <button class="menu-btn" id="btnDashboard">Dashboard</button>
+    <button class="menu-btn" id="btnTabelaTurma">Tabela por Turma</button>
+    <button class="menu-btn" id="btnSaas">Gerenciar Alunos</button>
+  </div>
+  <div class="content">
+    <div class="decorative-float"></div>
+    <div id="loader" class="loader" style="display:none;"></div>
+    
+    <!-- SEÇÃO DE AUTENTICAÇÃO -->
+    <section id="secAuth" style="width:100%; max-width:400px; margin:auto;">
+      <div class="auth-container">
+        <div class="auth-tabs">
+          <button class="auth-tab active" id="tabLogin">Login</button>
+          <button class="auth-tab" id="tabRegister">Cadastro</button>
+        </div>
+        
+        <!-- Formulário de Login -->
+        <div id="formLogin">
+          <h3 style="text-align:center; margin-bottom:20px;">Entrar no Sistema</h3>
+          <label for="loginEmail">Email:</label>
+          <input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="email"/>
+          <label for="loginPassword">Senha:</label>
+          <input type="password" id="loginPassword" placeholder="Sua senha" autocomplete="current-password"/>
+          <button onclick="login()" style="width:100%;">Entrar</button>
+          <div id="msgLogin" class="msg"></div>
+        </div>
+        
+        <!-- Formulário de Cadastro -->
+        <div id="formRegister" style="display:none;">
+          <h3 style="text-align:center; margin-bottom:20px;">Criar Conta</h3>
+          <label for="registerName">Nome completo:</label>
+          <input type="text" id="registerName" placeholder="Seu nome completo" autocomplete="name"/>
+          <label for="registerEmail">Email:</label>
+          <input type="email" id="registerEmail" placeholder="seu@email.com" autocomplete="email"/>
+          <label for="registerPassword">Senha:</label>
+          <input type="password" id="registerPassword" placeholder="Mínimo 6 caracteres" autocomplete="new-password"/>
+          <label for="registerConfirmPassword">Confirmar senha:</label>
+          <input type="password" id="registerConfirmPassword" placeholder="Digite novamente" autocomplete="new-password"/>
+          <button onclick="register()" style="width:100%;">Cadastrar</button>
+          <div id="msgRegister" class="msg"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="secAlunos" style="width:100%; max-width:630px; margin:auto; display:none;">
+      <h3>Cadastro de Alunos</h3>
+      <div style="width:94%;margin:auto;">
+        <label for="nome">Nome completo:</label>
+        <input type="text" id="nome" maxlength="60" autocomplete="off" />
+        <label for="cpf">CPF:</label>
+        <input type="text" id="cpf" maxlength="14" autocomplete="off" placeholder="000.000.000-00"/>
+        <label for="nascimento">Data de nascimento:</label>
+        <input type="date" id="nascimento" min="1930-01-01" max="2025-12-31"/>
+        <label for="idade">Idade:</label>
+        <input type="number" id="idade" min="3" max="99" />
+        <label for="turma">Turma:</label>
+        <select id="turma">
+          <option value="">Selecione a turma</option>
+          <option value="1ano - Dev. de sistemas">1ano - Dev. de sistemas</option>
+          <option value="1ano - Mecânica">1ano - Mecânica</option>
+          <option value="2ano - Eletromecânica">2ano - Eletromecânica</option>
+          <option value="2ano - Automação">2ano - Automação</option>
+          <option value="3ano - Automação">3ano - Automação</option>
+          <option value="3ano - Dev. de sistemas">3ano - Dev. de sistemas</option>
+        </select>
+        <label for="foto">Foto do aluno (PNG/JPG até 5MB):</label>
+        <input type="file" id="foto" accept="image/png, image/jpeg" />
+        <div class="preview-wrap">
+          <img id="previewImg" class="preview-img" alt="Prévia da foto" />
+          <div class="preview-info" id="previewInfo"></div>
+        </div>
+        <button id="cadastrarAluno">Cadastrar Aluno</button>
+        <div id="msgAluno" class="msg"></div>
+      </div>
+    </section>
+
+    <div id="modalWrap" style="display:none;">
+      <div class="modal-backdrop"></div>
+      <div class="modal">
+        <div id="modalContent"></div>
+        <div style="text-align: center; margin-top: 20px;">
+          <button id="modalConfirm" class="botao-modal">Confirmar</button>
+          <button id="modalCancel" class="botao-modal botao-cancelar">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEÇÃO CRUD COMPLETA -->
+    <section id="secSaas" style="width:100%; display:none;">
+      <div class="crud-container">
+        <h3>🎯 Gerenciar Alunos</h3>
+        
+        <div class="crud-actions">
+          <div class="search-box">
+            <input type="text" id="pesquisaCrud" placeholder="Pesquisar aluno por nome..." autocomplete="off"/>
+            <button onclick="pesquisarAlunos()">🔍 Pesquisar</button>
+          </div>
+          <button onclick="carregarAlunosSaas()" style="background: #10b981;">🔄 Atualizar</button>
+        </div>
+
+        <div class="table-container">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Foto</th>
+                  <th>Nome</th>
+                  <th>CPF</th>
+                  <th>Turma</th>
+                  <th>Idade</th>
+                  <th>Nascimento</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tabelaCrudAlunos">
+                <!-- Dados serão carregados aqui -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div id="msgSaas" class="msg"></div>
+      </div>
+    </section>
+
+    <section id="secOcorrencias" style="width:100%; max-width:570px; margin:auto; display:none;">
+      <h3>Registro de Ocorrências</h3>
+      <label for="pesquisaAluno">Pesquisar aluno:</label>
+      <input type="text" id="pesquisaAluno" placeholder="Digite..." autocomplete="off"/>
+      <div id="listaResultados" class="resultado-lista"></div>
+      <div id="alunoSelecionado" class="selecionado"></div>
+      <label for="tipo">Tipo de ocorrência:</label>
+      <select id="tipo">
+        <option value="">Selecione</option>
+        <option value="Suspensão">Suspensão</option>
+        <option value="Advertência">Advertência</option>
+        <option value="Liberação">Liberação</option>
+      </select>
+      <label for="descricao">Descrição:</label>
+      <textarea id="descricao" maxlength="140"></textarea>
+      <button id="registrarOcorrencia">Registrar Ocorrência</button>
+      <div id="msgOcorrencia" class="msg"></div>
+    </section>
+
+    <!-- DASHBOARD CENTRALIZADO -->
+    <section id="secDashboard" style="width:100%; display:none;">
+      <div class="dashboard-container">
+        <h3>📊 Dashboard da Escola</h3>
+        <div class="dashboard-cards" id="dashboardCards"></div>
+        <div class="dashboard-charts" id="dashboardCharts"></div>
+      </div>
+    </section>
+
+    <!-- TABELAS POR TURMA CENTRALIZADAS -->
+    <section id="secTabelaTurma" style="width:100%; display:none;">
+      <h3>👥 Turmas - Visão Geral</h3>
+      <div id="tabelasTurma" class="table-container"></div>
+      <div id="msgTabela" class="msg"></div>
+    </section>
+  </div>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const SUPABASE_URL = "https://tdypblxxhlyckhexbalm.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkeXBibHh4aGx5Y2toZXhiYWxtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE3NTkzMzAsImV4cCI6MjA3NzMzNTMzMH0.PJOSUGyW2VzIipTAop-LCs61RGq20thHkrB2cpv3EGo";
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const BUCKET_NAME = "student-photos";
+
+    // Variáveis globais
+    let alunoEditandoId = null;
+    let currentUser = null;
+
+    // Sections and menu
+    const secAuth = document.getElementById("secAuth");
+    const secAlunos = document.getElementById("secAlunos");
+    const secOcorrencias = document.getElementById("secOcorrencias");
+    const secDashboard = document.getElementById("secDashboard");
+    const secTabelaTurma = document.getElementById("secTabelaTurma");
+    const secSaas = document.getElementById("secSaas");
+    const btnAlunos = document.getElementById("btnAlunos");
+    const btnOcorrencias = document.getElementById("btnOcorrencias");
+    const btnDashboard = document.getElementById("btnDashboard");
+    const btnTabelaTurma = document.getElementById("btnTabelaTurma");
+    const btnSaas = document.getElementById("btnSaas");
+    const loader = document.getElementById("loader");
+    const userInfo = document.getElementById("userInfo");
+    const userName = document.getElementById("userName");
+
+    // Modal
+    const modalWrap = document.getElementById("modalWrap");
+    const modalContent = document.getElementById("modalContent");
+    
+    document.getElementById("modalCancel").onclick = () => hideModal();
+    document.getElementById("modalConfirm").onclick = () => { 
+      if (alunoEditandoId) {
+        salvarEdicaoAluno();
+      }
+    };
+    
+    function showModal(content) { 
+      modalContent.innerHTML = content; 
+      modalWrap.style.display = 'block';
+    }
+    
+    function hideModal() { 
+      modalWrap.style.display = 'none'; 
+      alunoEditandoId = null;
+    }
+
+    // Sistema de autenticação
+    function showAuth() {
+      secAuth.style.display = "block";
+      secAlunos.style.display = "none";
+      secOcorrencias.style.display = "none";
+      secDashboard.style.display = "none";
+      secTabelaTurma.style.display = "none";
+      secSaas.style.display = "none";
+      userInfo.style.display = "none";
+    }
+
+    function showApp() {
+      secAuth.style.display = "none";
+      userInfo.style.display = "flex";
+      mudarAba("alunos");
+    }
+
+    // Tabs de autenticação
+    document.getElementById("tabLogin").onclick = () => {
+      document.getElementById("tabLogin").classList.add("active");
+      document.getElementById("tabRegister").classList.remove("active");
+      document.getElementById("formLogin").style.display = "block";
+      document.getElementById("formRegister").style.display = "none";
+    };
+
+    document.getElementById("tabRegister").onclick = () => {
+      document.getElementById("tabRegister").classList.add("active");
+      document.getElementById("tabLogin").classList.remove("active");
+      document.getElementById("formLogin").style.display = "none";
+      document.getElementById("formRegister").style.display = "block";
+    };
+
+    // Funções de autenticação
+    window.login = async function() {
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value;
+      const msgLogin = document.getElementById("msgLogin");
+
+      if (!email || !password) {
+        msgLogin.innerHTML = `<p class="erro">Preencha todos os campos.</p>`;
+        return;
+      }
+
+      showLoader();
+      const { data, error } = await client.auth.signInWithPassword({
+        email,
+        password
+      });
+      hideLoader();
+
+      if (error) {
+        msgLogin.innerHTML = `<p class="erro">${error.message}</p>`;
+        return;
+      }
+
+      currentUser = data.user;
+      await loadUserProfile();
+      showApp();
+    };
+
+    window.register = async function() {
+      const name = document.getElementById("registerName").value.trim();
+      const email = document.getElementById("registerEmail").value.trim();
+      const password = document.getElementById("registerPassword").value;
+      const confirmPassword = document.getElementById("registerConfirmPassword").value;
+      const msgRegister = document.getElementById("msgRegister");
+
+      if (!name || !email || !password || !confirmPassword) {
+        msgRegister.innerHTML = `<p class="erro">Preencha todos os campos.</p>`;
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        msgRegister.innerHTML = `<p class="erro">As senhas não coincidem.</p>`;
+        return;
+      }
+
+      if (password.length < 6) {
+        msgRegister.innerHTML = `<p class="erro">A senha deve ter pelo menos 6 caracteres.</p>`;
+        return;
+      }
+
+      showLoader();
+      const { data, error } = await client.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name: name
+          }
+        }
+      });
+      hideLoader();
+
+      if (error) {
+        msgRegister.innerHTML = `<p class="erro">${error.message}</p>`;
+        return;
+      }
+
+      msgRegister.innerHTML = `<p class="sucesso">✅ Cadastro realizado! Faça login para continuar.</p>`;
+      document.getElementById("tabLogin").click();
+    };
+
+    window.logout = async function() {
+      showLoader();
+      await client.auth.signOut();
+      hideLoader();
+      currentUser = null;
+      showAuth();
+    };
+
+    async function loadUserProfile() {
+      if (!currentUser) return;
+
+      const { data, error } = await client
+        .from('profiles')
+        .select('name')
+        .eq('id', currentUser.id)
+        .single();
+
+      if (!error && data) {
+        userName.textContent = data.name;
+      } else {
+        userName.textContent = currentUser.email;
+      }
+    }
+
+    // Verificar autenticação ao carregar a página
+    async function checkAuth() {
+      showLoader();
+      const { data, error } = await client.auth.getSession();
+      hideLoader();
+
+      if (data.session) {
+        currentUser = data.session.user;
+        await loadUserProfile();
+        showApp();
+      } else {
+        showAuth();
+      }
+    }
+
+    // Modificar a função de registro de ocorrências para incluir o usuário responsável
+    document.getElementById("registrarOcorrencia").onclick = async ()=>{
+      if (!currentUser) {
+        alert("Você precisa estar logado para registrar ocorrências.");
+        return;
+      }
+
+      const input = document.getElementById("pesquisaAluno");
+      const idAluno = input.dataset.idAluno;
+      const tipo = document.getElementById("tipo").value;
+      const descricao = document.getElementById("descricao").value.trim();
+      const msg = document.getElementById("msgOcorrencia");
+      msg.innerHTML = "";
+      
+      if (!idAluno) { msg.innerHTML = '<span class="erro">Selecione um aluno válido antes!</span>'; return; }
+      if (!tipo) { msg.innerHTML = '<span class="erro">Informe o tipo de ocorrência.</span>'; return; }
+      if (!descricao || descricao.length < 5) { msg.innerHTML = '<span class="erro">Coloque uma descrição detalhada.</span>'; return; }
+      
+      showLoader();
+      const { error } = await client.from('ocorrencias').insert([{ 
+        aluno_id: idAluno, 
+        tipo, 
+        descricao,
+        responsavel_id: currentUser.id // Adiciona o ID do usuário responsável
+      }]);
+      hideLoader();
+      
+      if (error) { msg.innerHTML = `<span class="erro">Erro: ${error.message}</span>`; return; }
+      msg.innerHTML = `<span class="sucesso">✅ Ocorrência registrada!</span>`;
+      document.getElementById("descricao").value = "";
+      document.getElementById("tipo").value = "";
+      document.getElementById("pesquisaAluno").value = "";
+      document.getElementById("pesquisaAluno").dataset.idAluno = "";
+      document.getElementById("alunoSelecionado").style.display = "none";
+    };
+
+    // Restante do código permanece igual...
+    function showLoader(){ loader.style.display="block"; }
+    function hideLoader(){ loader.style.display="none"; }
+    function avatar(nome){ return `<div class="thumbnail default">${nome ? nome.trim()[0].toUpperCase():"?"}</div>`;}
+
+    function mudarAba(aba) {
+      [secAlunos, secOcorrencias, secDashboard, secTabelaTurma, secSaas].forEach(s => s.style.display = "none");
+      [btnAlunos, btnOcorrencias, btnDashboard, btnTabelaTurma, btnSaas].forEach(b => b.classList.remove("active"));
+      if (aba === "alunos") { secAlunos.style.display = "block"; btnAlunos.classList.add("active"); }
+      if (aba === "ocorrencias") { secOcorrencias.style.display = "block"; btnOcorrencias.classList.add("active"); carregarAlunosParaPesquisa(); }
+      if (aba === "dashboard") { secDashboard.style.display = "block"; btnDashboard.classList.add("active"); carregarDashboard(); }
+      if (aba === "tabelaturma") { secTabelaTurma.style.display = "block"; btnTabelaTurma.classList.add("active"); carregarTabelaTurma();}
+      if (aba === "saas") { secSaas.style.display = "block"; btnSaas.classList.add("active"); carregarAlunosSaas(); }
+      hideLoader();
+    }
+    btnAlunos.onclick = () => mudarAba("alunos");
+    btnOcorrencias.onclick = () => mudarAba("ocorrencias");
+    btnDashboard.onclick = () => mudarAba("dashboard");
+    btnTabelaTurma.onclick = () => mudarAba("tabelaturma");
+    btnSaas.onclick = () => mudarAba("saas");
+
+    // Preview foto
+    const fotoInput = document.getElementById('foto');
+    const previewImg = document.getElementById('previewImg');
+    const previewInfo = document.getElementById('previewInfo');
+    fotoInput.addEventListener('change', () => {
+      const file = fotoInput.files[0];
+      if (!file) { previewImg.style.display = 'none'; previewInfo.textContent = ''; return; }
+      if (!["image/png", "image/jpeg"].includes(file.type)) {
+        previewInfo.textContent = 'Tipo inválido. Use PNG ou JPG.'; previewImg.style.display = 'none'; return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        previewInfo.textContent = 'Arquivo muito grande (>5MB)'; previewImg.style.display = 'none'; return;
+      }
+      previewImg.src = URL.createObjectURL(file);
+      previewImg.style.display = 'block';
+      previewInfo.textContent = `${file.name} — ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+    });
+
+    async function uploadFotoToStorage(file) {
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+      const fileName = `aluno_${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
+      showLoader();
+      const { error } = await client.storage.from(BUCKET_NAME).upload(fileName, file, { upsert: true });
+      hideLoader();
+      if (error) return { error };
+      const { data } = await client.storage.from(BUCKET_NAME).getPublicUrl(fileName);
+      return { publicUrl: data.publicUrl };
+    }
+
+    function validarCPF(cpf) {
+      cpf = cpf.replace(/[^\d]/g, "");
+      if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+      let soma = 0; for (let i=0;i<9;i++) soma+=parseInt(cpf.charAt(i))*(10-i);
+      let resto = (soma*10)%11; if (resto===10) resto=0; if (resto!==parseInt(cpf.charAt(9))) return false;
+      soma = 0; for (let i=0;i<10;i++) soma+=parseInt(cpf.charAt(i))*(11-i);
+      resto = (soma*10)%11; if (resto===10) resto=0; if (resto!==parseInt(cpf.charAt(10))) return false;
+      return true;
+    }
+
+    function validarNascimento(dt) {
+      const data = new Date(dt); if(data<new Date("1930-01-01")) return false;
+      if(data>new Date()) return false; return true;
+    }
+
+    const msgAluno = document.getElementById('msgAluno');
+    document.getElementById('cadastrarAluno').addEventListener('click', async () => {
+      if (!currentUser) {
+        alert("Você precisa estar logado para cadastrar alunos.");
+        return;
+      }
+
+      msgAluno.innerHTML = '';
+      const nome = document.getElementById('nome').value.trim();
+      const cpf = document.getElementById('cpf').value.trim();
+      const nascimento = document.getElementById('nascimento').value.trim();
+      const idade = Number(document.getElementById('idade').value.trim());
+      const turma = document.getElementById('turma').value;
+      const file = fotoInput.files[0] || null;
+      if (!nome || nome.length < 3 ) {msgAluno.innerHTML = `<p class="erro">Digite o nome completo.</p>`;return;}
+      if (!cpf || !validarCPF(cpf)) {msgAluno.innerHTML = `<p class="erro">CPF inválido.</p>`; return;}
+      if (!nascimento || !validarNascimento(nascimento)) {msgAluno.innerHTML = `<p class="erro">Data de nascimento inválida.</p>`;return;}
+      if (!idade || idade<3 || idade>99) {msgAluno.innerHTML = `<p class="erro">Idade inválida.</p>`;return;}
+      if (!turma) {msgAluno.innerHTML = `<p class="erro">Informe a turma.</p>`;return;}
+      let fotoUrl = null;
+      if (file) {
+        showLoader();
+        const { publicUrl, error } = await uploadFotoToStorage(file);
+        if (error) {msgAluno.innerHTML = `<p class="erro">Erro upload: ${error.message}</p>`; hideLoader();return;}
+        fotoUrl = publicUrl;
+        hideLoader();
+      }
+      const insertObj = { nome, cpf, nascimento, idade, turma, foto_url: fotoUrl };
+      showLoader();
+      const { error } = await client.from('alunos').insert([insertObj]);
+      hideLoader();
+      if (error) {
+        msgAluno.innerHTML = `<p class="erro">Erro: ${error.message}</p>`;
+        return;
+      }
+      msgAluno.innerHTML = `<p class="sucesso">✅ Aluno cadastrado com sucesso!</p>`;
+      document.getElementById('nome').value = '';
+      document.getElementById('cpf').value = '';
+      document.getElementById('nascimento').value = '';
+      document.getElementById('idade').value = '';
+      document.getElementById('turma').value = '';
+      fotoInput.value = '';
+      previewImg.style.display = 'none';
+      previewInfo.textContent = '';
+      carregarTabelaTurma();
+      carregarAlunosSaas();
+    });
+
+    // -------- REGISTRO DE OCORRÊNCIAS ------------
+    let todosAlunos = [];
+    async function carregarAlunosParaPesquisa() {
+      const input = document.getElementById("pesquisaAluno");
+      const lista = document.getElementById("listaResultados");
+      const selecionado = document.getElementById("alunoSelecionado");
+      input.value = "";
+      lista.innerHTML = "";
+      selecionado.style.display = "none";
+      document.getElementById('tipo').value = "";
+      document.getElementById('descricao').value = "";
+      document.getElementById('msgOcorrencia').innerHTML = "";
+
+      showLoader();
+      const { data, error } = await client.from('alunos').select('id,nome,cpf,turma');
+      hideLoader();
+      todosAlunos = data || [];
+
+      input.oninput = () => {
+        lista.innerHTML = "";
+        const valor = input.value.trim().toLowerCase();
+        if (!valor || !todosAlunos.length) return;
+        const filtrados = todosAlunos.filter(al => al.nome.toLowerCase().includes(valor));
+        if (filtrados.length === 0) {
+          lista.innerHTML = `<div class="item-aluno erro">Nenhum aluno encontrado.</div>`;
+        }
+        lista.innerHTML = filtrados.map(al =>
+          `<div class="item-aluno" data-id="${al.id}" tabindex="0"><strong>${al.nome}</strong> <span style="color:#2563eb;">(${al.turma})</span></div>`
+        ).join("");
+        const itens = [...lista.querySelectorAll('.item-aluno')];
+        itens.forEach(el=>{
+          el.onclick = ()=>{
+            input.value = el.textContent;
+            lista.innerHTML = "";
+            selecionado.innerHTML = `<span>Aluno selecionado: <b>${el.textContent}</b></span>`;
+            selecionado.style.display = "block";
+            input.dataset.idAluno = el.getAttribute("data-id");
+          }
+        });
+      };
+    }
+
+    // CRUD COMPLETO PARA ALUNOS
+    async function carregarAlunosSaas() {
+      if (!currentUser) return;
+
+      const tabelaCrud = document.getElementById("tabelaCrudAlunos");
+      const msgSaas = document.getElementById("msgSaas");
+      showLoader();
+      const { data, error } = await client.from('alunos').select('id,nome,cpf,nascimento,turma,foto_url,idade').order('nome');
+      hideLoader();
+      
+      if (error || !data) { 
+        tabelaCrud.innerHTML = '<tr><td colspan="7" class="erro">Erro ao carregar alunos</td></tr>'; 
+        msgSaas.innerHTML = `<span class="erro">${error?.message || 'Erro ao buscar alunos'}</span>`; 
+        return; 
+      }
+      
+      msgSaas.innerHTML = '';
+      
+      if (data.length === 0) {
+        tabelaCrud.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#6b7280">Nenhum aluno cadastrado</td></tr>';
+        return;
+      }
+
+      tabelaCrud.innerHTML = data.map(a => `
+        <tr>
+          <td>${a.foto_url ? `<img src="${a.foto_url}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">` : avatar(a.nome)}</td>
+          <td>${a.nome}</td>
+          <td>${a.cpf || '-'}</td>
+          <td>${a.turma}</td>
+          <td>${a.idade}</td>
+          <td>${a.nascimento || '-'}</td>
+          <td class="actions-cell">
+            <button class="action-btn edit-btn" onclick="editarAluno(${a.id})">✏️ Editar</button>
+            <button class="action-btn delete-btn" onclick="confirmaApagarAluno(${a.id},'${a.nome.replace(/'/g,"\\'")}')">🗑️ Excluir</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // Função de pesquisa no CRUD
+    window.pesquisarAlunos = async function() {
+      if (!currentUser) return;
+
+      const termo = document.getElementById("pesquisaCrud").value.trim().toLowerCase();
+      const tabelaCrud = document.getElementById("tabelaCrudAlunos");
+      
+      if (!termo) {
+        carregarAlunosSaas();
+        return;
+      }
+
+      showLoader();
+      const { data, error } = await client.from('alunos')
+        .select('id,nome,cpf,nascimento,turma,foto_url,idade')
+        .ilike('nome', `%${termo}%`)
+        .order('nome');
+      hideLoader();
+
+      if (error || !data) { 
+        tabelaCrud.innerHTML = '<tr><td colspan="7" class="erro">Erro na pesquisa</td></tr>'; 
+        return; 
+      }
+
+      if (data.length === 0) {
+        tabelaCrud.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#6b7280">Nenhum aluno encontrado</td></tr>';
+        return;
+      }
+
+      tabelaCrud.innerHTML = data.map(a => `
+        <tr>
+          <td>${a.foto_url ? `<img src="${a.foto_url}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">` : avatar(a.nome)}</td>
+          <td>${a.nome}</td>
+          <td>${a.cpf || '-'}</td>
+          <td>${a.turma}</td>
+          <td>${a.idade}</td>
+          <td>${a.nascimento || '-'}</td>
+          <td class="actions-cell">
+            <button class="action-btn edit-btn" onclick="editarAluno(${a.id})">✏️ Editar</button>
+            <button class="action-btn delete-btn" onclick="confirmaApagarAluno(${a.id},'${a.nome.replace(/'/g,"\\'")}')">🗑️ Excluir</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // CORREÇÃO: Função editarAluno simplificada e funcional
+    window.editarAluno = async function(id) {
+      if (!currentUser) {
+        alert("Você precisa estar logado para editar alunos.");
+        return;
+      }
+
+      console.log("Editando aluno ID:", id);
+      showLoader();
+      
+      try {
+        const { data, error } = await client.from('alunos').select().eq('id', id).single();
+        hideLoader();
+        
+        if (error) {
+          console.error("Erro ao buscar aluno:", error);
+          alert("Erro ao carregar dados do aluno: " + error.message);
+          return;
+        }
+        
+        if (!data) {
+          alert("Aluno não encontrado");
+          return;
+        }
+
+        alunoEditandoId = id;
+        
+        const modalHTML = `
+          <div style="text-align:left;">
+            <h4 style="color:#2563eb; text-align:center; margin-bottom:20px;">✏️ Editar Aluno</h4>
+            <div style="margin-bottom:15px;">
+              <label><strong>Nome:</strong></label>
+              <input type="text" id="editNome" value="${data.nome}" maxlength="60" 
+                     style="width:100%; padding:10px; margin:5px 0; border:1px solid #dbeafe; border-radius:6px;">
+            </div>
+            
+            <div style="margin-bottom:15px;">
+              <label><strong>CPF:</strong></label>
+              <input type="text" id="editCPF" value="${data.cpf || ''}" maxlength="14" 
+                     style="width:100%; padding:10px; margin:5px 0; border:1px solid #dbeafe; border-radius:6px;">
+            </div>
+            
+            <div style="margin-bottom:15px;">
+              <label><strong>Data de nascimento:</strong></label>
+              <input type="date" id="editNascimento" value="${data.nascimento || ''}" 
+                     style="width:100%; padding:10px; margin:5px 0; border:1px solid #dbeafe; border-radius:6px;">
+            </div>
+            
+            <div style="margin-bottom:15px;">
+              <label><strong>Idade:</strong></label>
+              <input type="number" id="editIdade" min="3" max="99" value="${data.idade}" 
+                     style="width:100%; padding:10px; margin:5px 0; border:1px solid #dbeafe; border-radius:6px;">
+            </div>
+            
+            <div style="margin-bottom:20px;">
+              <label><strong>Turma:</strong></label>
+              <select id="editTurma" style="width:100%; padding:10px; margin:5px 0; border:1px solid #dbeafe; border-radius:6px;">
+                <option value="">Selecione a turma</option>
+                <option value="1ano - Dev. de sistemas">1ano - Dev. de sistemas</option>
+                <option value="2ano - Eletromecânica">2ano - Eletromecânica</option>
+                <option value="3ano - Automação">3ano - Automação</option>
+              </select>
+            </div>
+          </div>
+        `;
+        
+        showModal(modalHTML);
+        
+        // Definir o valor da turma após o modal ser exibido
+        setTimeout(() => {
+          const turmaSelect = document.getElementById("editTurma");
+          if (turmaSelect && data.turma) {
+            turmaSelect.value = data.turma;
+          }
+        }, 100);
+        
+      } catch (error) {
+        hideLoader();
+        console.error("Erro inesperado:", error);
+        alert("Erro inesperado: " + error.message);
+      }
+    };
+
+    // CORREÇÃO: Função para salvar a edição
+    async function salvarEdicaoAluno() {
+      if (!alunoEditandoId) return;
+      
+      const nome = document.getElementById("editNome").value.trim();
+      const cpf = document.getElementById("editCPF").value.trim();
+      const nascimento = document.getElementById("editNascimento").value.trim();
+      const idade = Number(document.getElementById("editIdade").value.trim());
+      const turma = document.getElementById("editTurma").value;
+      
+      console.log("Dados para salvar:", { nome, cpf, nascimento, idade, turma });
+      
+      // Validações
+      if (!nome || nome.length < 3) {
+        alert("Digite o nome completo (mínimo 3 caracteres).");
+        return;
+      }
+      if (!cpf || !validarCPF(cpf)) {
+        alert("CPF inválido.");
+        return;
+      }
+      if (!nascimento || !validarNascimento(nascimento)) {
+        alert("Data de nascimento inválida.");
+        return;
+      }
+      if (!idade || idade < 3 || idade > 99) {
+        alert("Idade inválida (deve ser entre 3 e 99 anos).");
+        return;
+      }
+      if (!turma) {
+        alert("Selecione a turma.");
+        return;
+      }
+      
+      showLoader();
+      
+      try {
+        const { error } = await client
+          .from('alunos')
+          .update({
+            nome: nome,
+            cpf: cpf,
+            nascimento: nascimento,
+            idade: idade,
+            turma: turma,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', alunoEditandoId);
+        
+        hideLoader();
+        
+        if (error) {
+          console.error("Erro ao atualizar:", error);
+          alert("❌ Erro ao atualizar aluno: " + error.message);
+          return;
+        }
+        
+        console.log("Aluno atualizado com sucesso!");
+        alert("✅ Aluno atualizado com sucesso!");
+        hideModal();
+        
+        // Recarregar as listas
+        carregarAlunosSaas();
+        carregarTabelaTurma();
+        
+      } catch (error) {
+        hideLoader();
+        console.error("Erro inesperado ao salvar:", error);
+        alert("❌ Erro inesperado: " + error.message);
+      }
+    }
+
+    // CORREÇÃO: Função de exclusão
+    window.confirmaApagarAluno = function(id, nome) {
+      if (!currentUser) {
+        alert("Você precisa estar logado para excluir alunos.");
+        return;
+      }
+
+      alunoEditandoId = id;
+      showModal(
+        `<div style="text-align:center;">
+          <h4 style="color:#dc2626; margin-bottom:15px;">🗑️ Confirmar Exclusão</h4>
+          <p>Tem certeza que deseja excluir o aluno:</p>
+          <p><strong>"${nome}"</strong>?</p>
+          <p style="color:#dc2626; font-size:14px; margin-top:10px;">
+            ⚠️ Esta ação não pode ser desfeita!
+          </p>
+        </div>`
+      );
+      
+      // Configurar o callback para o botão confirmar
+      document.getElementById("modalConfirm").onclick = async () => {
+        showLoader();
+        try {
+          const { error } = await client.from('alunos').delete().eq('id', id);
+          hideLoader();
+          
+          if (error) {
+            alert("❌ Erro ao excluir aluno: " + error.message);
+            return;
+          }
+          
+          alert("✅ Aluno excluído com sucesso!");
+          hideModal();
+          carregarAlunosSaas();
+          carregarTabelaTurma();
+          
+        } catch (error) {
+          hideLoader();
+          alert("❌ Erro inesperado: " + error.message);
+        }
+      };
+    };
+
+    // Tabela por turma CORRIGIDA - UMA EM BAIXO DA OUTRA
+    async function carregarTabelaTurma() {
+      if (!currentUser) return;
+
+      const tabelasTurmaDiv = document.getElementById("tabelasTurma");
+      const msgTabela = document.getElementById("msgTabela");
+      
+      showLoader();
+      const { data, error } = await client.from('alunos')
+        .select('nome,cpf,nascimento,idade,turma')
+        .order('nome', { ascending: true });
+      hideLoader();
+
+      tabelasTurmaDiv.innerHTML = '';
+      if(error){ 
+        msgTabela.innerHTML = `<span class="erro">${error.message}</span>`; 
+        return;
+      }
+      if(!data||!data.length){ 
+        msgTabela.innerHTML = `<span class="erro">Nenhum aluno cadastrado.</span>`; 
+        return;
+      }
+      msgTabela.innerHTML = '';
+
+      const turmas = [
+        "1ano - Dev. de sistemas",
+        "2ano - Eletromecânica", 
+        "3ano - Automação"
+      ];
+      
+      // Criar um container principal para todas as tabelas
+      const containerPrincipal = document.createElement('div');
+      containerPrincipal.style.width = '100%';
+      containerPrincipal.style.maxWidth = '1000px';
+      containerPrincipal.style.margin = '0 auto';
+      
+      turmas.forEach((turma) => {
+        const alunosTurma = data.filter(a => a.turma === turma);
+        
+        const tableBlock = document.createElement('div');
+        tableBlock.className = 'table-turma-block';
+        tableBlock.style.marginBottom = '40px';
+        tableBlock.style.textAlign = 'center';
+        
+        tableBlock.innerHTML = `
+          <div class="table-wrap">
+            <h4>${turma}</h4>
+            <table>
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>CPF</th>
+                  <th>Data de nascimento</th>
+                  <th>Idade</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${alunosTurma.length
+                  ? alunosTurma.map(a => `<tr>
+                      <td>${a.nome}</td>
+                      <td>${a.cpf}</td>
+                      <td>${a.nascimento}</td>
+                      <td>${a.idade}</td>
+                    </tr>`).join('')
+                  : `<tr><td colspan="4" style="text-align:center;color:#7f9cf5">Sem alunos cadastrados</td></tr>`
+                }
+              </tbody>
+            </table>
+          </div>`;
+        
+        containerPrincipal.appendChild(tableBlock);
+      });
+      
+      tabelasTurmaDiv.appendChild(containerPrincipal);
+    }
+
+    // DASHBOARD CENTRALIZADO COM CORREÇÃO DO GRÁFICO "OCORRÊNCIAS POR TURMA"
+    async function carregarDashboard() {
+      if (!currentUser) return;
+
+      const dashboardCards = document.getElementById("dashboardCards");
+      const dashboardCharts = document.getElementById("dashboardCharts");
+      showLoader();
+      
+      try {
+        const { data: alunos, error: errorAlunos } = await client.from('alunos').select('*');
+        if (errorAlunos) throw errorAlunos;
+
+        const { data: ocorrencias, error: errorOcorrencias } = await client.from('ocorrencias').select('*');
+        if (errorOcorrencias) throw errorOcorrencias;
+
+        hideLoader();
+
+        const totalAlunos = alunos?.length || 0;
+        const alunosPorTurma = {};
+        alunos?.forEach(aluno => {
+          alunosPorTurma[aluno.turma] = (alunosPorTurma[aluno.turma] || 0) + 1;
+        });
+
+        const ocorrenciasPorTipo = {};
+        ocorrencias?.forEach(ocorrencia => {
+          ocorrenciasPorTipo[ocorrencia.tipo] = (ocorrenciasPorTipo[ocorrencia.tipo] || 0) + 1;
+        });
+
+        const alunosComOcorrencias = [...new Set(ocorrencias?.map(o => o.aluno_id) || [])].length;
+
+        // Cards do dashboard
+        dashboardCards.innerHTML = `
+          <div class="dashboard-card">
+            <h4>Total de Alunos</h4>
+            <div class="number">${totalAlunos}</div>
+            <div class="subtitle">Matriculados no sistema</div>
+          </div>
+          <div class="dashboard-card">
+            <h4>Ocorrências Registradas</h4>
+            <div class="number">${ocorrencias?.length || 0}</div>
+            <div class="subtitle">Total de registros</div>
+          </div>
+          <div class="dashboard-card">
+            <h4>Alunos com Ocorrências</h4>
+            <div class="number">${alunosComOcorrencias}</div>
+            <div class="subtitle">${totalAlunos > 0 ? ((alunosComOcorrencias / totalAlunos * 100).toFixed(1) + '%') : '0%'} do total</div>
+          </div>
+          <div class="dashboard-card">
+            <h4>Taxa de Ocorrências</h4>
+            <div class="number">${totalAlunos > 0 ? (ocorrencias?.length / totalAlunos).toFixed(1) : '0'}</div>
+            <div class="subtitle">Ocorrências por aluno</div>
+          </div>
+        `;
+
+        // Gráficos do dashboard
+        dashboardCharts.innerHTML = `
+          <div class="chart-container">
+            <h4>Distribuição por Turma</h4>
+            <canvas id="chartTurmas"></canvas>
+          </div>
+          <div class="chart-container">
+            <h4>Tipos de Ocorrências</h4>
+            <canvas id="chartOcorrencias"></canvas>
+          </div>
+          <div class="chart-container">
+            <h4>Idade dos Alunos</h4>
+            <canvas id="chartIdades"></canvas>
+          </div>
+          <div class="chart-container">
+            <h4>Ocorrências por Turma</h4>
+            <canvas id="chartOcorrenciasTurma"></canvas>
+          </div>
+        `;
+
+        // Criar gráficos
+        setTimeout(() => {
+          if (alunos && ocorrencias) {
+            criarGraficos(alunos, ocorrencias, alunosPorTurma, ocorrenciasPorTipo);
+          }
+        }, 100);
+
+      } catch (error) {
+        hideLoader();
+        dashboardCards.innerHTML = `<div class="erro">Erro ao carregar dashboard: ${error.message}</div>`;
+      }
+    }
+
+    // FUNÇÃO CRIARGRAFICOS CORRIGIDA
+    function criarGraficos(alunos, ocorrencias, alunosPorTurma, ocorrenciasPorTipo) {
+      // Gráfico 1: Distribuição por Turma
+      const ctxTurmas = document.getElementById('chartTurmas')?.getContext('2d');
+      if (ctxTurmas) {
+        new Chart(ctxTurmas, {
+          type: 'pie',
+          data: {
+            labels: Object.keys(alunosPorTurma),
+            datasets: [{
+              data: Object.values(alunosPorTurma),
+              backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
+              borderWidth: 2,
+              borderColor: '#fff'
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: 'bottom'
+              }
+            }
+          }
+        });
+      }
+
+      // Gráfico 2: Tipos de Ocorrências
+      const ctxOcorrencias = document.getElementById('chartOcorrencias')?.getContext('2d');
+      if (ctxOcorrencias && ocorrenciasPorTipo) {
+        const cores = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+        new Chart(ctxOcorrencias, {
+          type: 'bar',
+          data: {
+            labels: Object.keys(ocorrenciasPorTipo),
+            datasets: [{
+              label: 'Quantidade de Ocorrências',
+              data: Object.values(ocorrenciasPorTipo),
+              backgroundColor: Object.keys(ocorrenciasPorTipo).map((_, index) => cores[index % cores.length]),
+              borderColor: Object.keys(ocorrenciasPorTipo).map((_, index) => cores[index % cores.length]),
+              borderWidth: 2,
+              borderRadius: 8,
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                display: false
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  stepSize: 1
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // Gráfico 3: Distribuição por Idade
+      const ctxIdades = document.getElementById('chartIdades')?.getContext('2d');
+      if (ctxIdades && alunos) {
+        const idades = alunos.map(a => a.idade).filter(idade => idade);
+        const distribuicaoIdades = {};
+        idades.forEach(idade => {
+          distribuicaoIdades[idade] = (distribuicaoIdades[idade] || 0) + 1;
+        });
+
+        new Chart(ctxIdades, {
+          type: 'line',
+          data: {
+            labels: Object.keys(distribuicaoIdades).sort(),
+            datasets: [{
+              label: 'Alunos por Idade',
+              data: Object.values(distribuicaoIdades),
+              backgroundColor: 'rgba(37, 99, 235, 0.1)',
+              borderColor: '#2563eb',
+              borderWidth: 2,
+              tension: 0.4,
+              fill: true
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  stepSize: 1
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // GRÁFICO 4 CORRIGIDO: Ocorrências por Turma
+      const ctxOcorrenciasTurma = document.getElementById('chartOcorrenciasTurma')?.getContext('2d');
+      if (ctxOcorrenciasTurma && ocorrencias && alunos) {
+        
+        // Inicializar contador para todas as turmas
+        const ocorrenciasPorTurma = {};
+        const turmas = ["1ano - Dev. de sistemas", "2ano - Eletromecânica", "3ano - Automação"];
+        
+        // Inicializar com zero para todas as turmas
+        turmas.forEach(turma => {
+          ocorrenciasPorTurma[turma] = 0;
+        });
+        
+        // Contar ocorrências por turma
+        ocorrencias.forEach(ocorrencia => {
+          const aluno = alunos.find(a => a.id === ocorrencia.aluno_id);
+          if (aluno && aluno.turma) {
+            if (ocorrenciasPorTurma[aluno.turma] !== undefined) {
+              ocorrenciasPorTurma[aluno.turma]++;
+            }
+          }
+        });
+
+        // Preparar dados para o gráfico
+        const labels = Object.keys(ocorrenciasPorTurma);
+        const dados = Object.values(ocorrenciasPorTurma);
+        
+        // Verificar se há dados para mostrar
+        const totalOcorrencias = dados.reduce((sum, val) => sum + val, 0);
+        
+        if (totalOcorrencias > 0) {
+          new Chart(ctxOcorrenciasTurma, {
+            type: 'doughnut',
+            data: {
+              labels: labels,
+              datasets: [{
+                data: dados,
+                backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444'],
+                borderWidth: 2,
+                borderColor: '#fff'
+              }]
+            },
+            options: {
+              responsive: true,
+              plugins: {
+                legend: {
+                  position: 'bottom'
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function(context) {
+                      const label = context.label || '';
+                      const value = context.raw || 0;
+                      const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                      const percentage = Math.round((value / total) * 100);
+                      return `${label}: ${value} ocorrência(s) (${percentage}%)`;
+                    }
+                  }
+                }
+              }
+            }
+          });
+        } else {
+          // Se não há ocorrências, mostrar mensagem
+          ctxOcorrenciasTurma.canvas.parentElement.innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+              <h4>Ocorrências por Turma</h4>
+              <p style="color: #6b7280; font-style: italic;">
+                Nenhuma ocorrência registrada ainda
+              </p>
+            </div>
+          `;
+        }
+      }
+    }
+
+    // Inicializar verificando autenticação
+    checkAuth();
+
+  });
+  </script>
+</body>
+</html>
